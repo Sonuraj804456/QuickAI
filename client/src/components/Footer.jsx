@@ -2,27 +2,7 @@ const Footer = () => {
   return (
     <footer className="relative overflow-hidden px-6 md:px-16 lg:px-24 xl:px-32 w-full text-sm text-slate-500 bg-white pt-10">
       
-      {/* Background SVG */}
-      <svg
-        className="hidden md:block absolute -bottom-30 -left-80 opacity-5 w-full h-full pointer-events-none"
-        width="68"
-        height="26"
-        viewBox="0 0 68 26"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <g clipPath="url(#clip0)">
-          <path
-            d="M16.141 0C13.4854 0 10.9387 1.04871 9.06091 2.91543L2.93268 9.00761C1.05492 10.8743 0 13.4061 0 16.0461C0 21.5435 4.48289 26 10.0128 26..."
-            fill="#364153"
-          />
-        </g>
-        <defs>
-          <clipPath id="clip0">
-            <rect width="68" height="26" fill="white" />
-          </clipPath>
-        </defs>
-      </svg>
+
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-14">
