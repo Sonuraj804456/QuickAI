@@ -7,7 +7,8 @@ import {
   Image,
   Scissors,
   SquarePen,
-  Users
+  Users,
+  BookOpen
 } from 'lucide-react'
 import React from 'react'
 import { NavLink } from 'react-router-dom'
@@ -21,6 +22,7 @@ const navItems = [
   { to: '/ai/remove-background', label: 'Remove Background', Icon: Eraser },
   { to: '/ai/remove-object', label: 'Remove Object', Icon: Scissors },
   { to: '/ai/review-resume', label: 'Review Resume', Icon: FileText },
+  { to: '/ai/chat-pdf', label: 'Chat with PDF', Icon: BookOpen },
   { to: '/ai/community', label: 'Community', Icon: Users },
 ]
 

@@ -5,7 +5,7 @@ import star_icon from "./star_icon.svg";
 import star_dull_icon from "./star_dull_icon.svg";
 import profile_img_1 from "./profile_img_1.png";
 import arrow_icon from "./arrow_icon.svg";
-import { SquarePen, Hash, Image, Eraser, Scissors, FileText } from 'lucide-react'
+import { SquarePen, Hash, Image, Eraser, Scissors, FileText, BookOpen } from 'lucide-react'
 import ai_gen_img_1 from "./ai_gen_img_1.png";
 import ai_gen_img_2 from "./ai_gen_img_2.png";
 import ai_gen_img_3 from "./ai_gen_img_3.png";
@@ -58,10 +58,17 @@ export const AiToolsData = [
     },
     {
         title: 'Resume Reviewer',
-        description: 'Get your resume reviewed by AI to improve your chances of landing your dream job.',
+        description: 'Get your resume reviewed by AI with ATS Job Description matching to improve your chances.',
         Icon: FileText,
         bg: { from: '#12B7AC', to: '#08B6CE' },
         path: '/ai/review-resume'
+    },
+    {
+        title: 'Chat with PDF (RAG)',
+        description: 'Upload any PDF document and ask questions with semantic vector search and source citations.',
+        Icon: BookOpen,
+        bg: { from: '#6366F1', to: '#A855F7' },
+        path: '/ai/chat-pdf'
     }
 ]
 
