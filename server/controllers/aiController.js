@@ -9,10 +9,14 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
 import fs from "fs";
-const AI = new OpenAI({
-    apiKey: process.env.Gemini_API_Key,
-    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/"
-});
+const AI = {
+  get chat() {
+    return new OpenAI({
+      apiKey: process.env.Gemini_API_Key,
+      baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/"
+    }).chat;
+  }
+};
 
 export const generateArticle = async (req, res) => {
   try {
@@ -258,11 +262,12 @@ export const removeImageObject = async (req, res) => {
 };
 
 export const resumeReview = async (req, res) => {
+  let tempFilePath = null;
   try {
     const { userId } = req.auth();
     const resume = req.file;
+    const { jobDescription } = req.body;
     const plan = req.plan;
-
 
     if (plan !== "premium") {
       return res.json({
@@ -271,46 +276,107 @@ export const resumeReview = async (req, res) => {
       });
     }
 
-    if(resume.size > 5 * 1024 * 1024){
+    if (!resume) {
+      return res.status(400).json({
+        success: false,
+        message: "Please upload a resume PDF file."
+      });
+    }
+
+    tempFilePath = resume.path;
+
+    if (resume.size > 5 * 1024 * 1024) {
       return res.json({
         success: false,
         message: "File size exceeds 5MB limit."
-      })
+      });
     }
 
     const dataBuffer = fs.readFileSync(resume.path);
     const pdfData = await pdf(dataBuffer);
 
-    const prompt = `Review the following resume and provide constructive feedback on its strengths, weaknesses, and areas for improvement. Resume Content:\n\n${pdfData.text}`;
+    let prompt = "";
+    let promptTitle = "Review the uploaded resume";
 
-    const response = await AI.chat.completions.create({
-      model: "gemini-2.5-flash",
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 10000,
-    });
+    if (jobDescription && jobDescription.trim()) {
+      promptTitle = "ATS Job-Matched Resume Review";
+      prompt = `You are a Senior Technical Recruiter and an advanced ATS (Applicant Tracking System) Scanner.
+Analyze the following Candidate Resume against the Target Job Description below.
+
+Target Job Description:
+${jobDescription.trim()}
+
+Candidate Resume Content:
+${pdfData.text}
+
+Provide an in-depth, structured evaluation in GitHub-flavored Markdown with the following sections:
+1. **🎯 Overall ATS Match Score**: Give an exact score out of 100 with a 1-sentence executive summary.
+2. **✅ Key Matched Qualifications & Strengths**: Bullet points of qualifications directly matching the target job.
+3. **⚠️ Critical Missing Keywords & Skills**: Must-have requirements in the JD that are absent or under-emphasized in the resume.
+4. **💡 Line-by-Line Resume Optimizations**: Specific bullet points from the resume rewritten with stronger action verbs and quantifiable metrics.
+5. **📋 Strategic Interview Recommendations**: Key potential concerns an interviewer might probe based on the candidate's gaps.`;
+    } else {
+      prompt = `You are a Senior Career Coach and Technical Recruiter.
+Review the following resume and provide constructive, structured feedback on its strengths, weaknesses, formatting, impact metrics, and areas for improvement.
+
+Resume Content:
+${pdfData.text}`;
+    }
+
+    let response;
+    try {
+      response = await AI.chat.completions.create({
+        model: "gemini-3.6-flash",
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        temperature: 0.4,
+        max_tokens: 10000,
+      });
+    } catch (err36) {
+      console.warn("gemini-3.6-flash failed in resumeReview, trying gemini-3-flash-preview:", err36.message);
+      response = await AI.chat.completions.create({
+        model: "gemini-3-flash-preview",
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        temperature: 0.4,
+        max_tokens: 10000,
+      });
+    }
 
     const content = response.choices[0].message.content;
 
-
     await sql`
       INSERT INTO creations (user_id, prompt, content, type)
-      VALUES (${userId}, 
-      'Review the uploaded resume', ${content}, 'resume-review')
+      VALUES (${userId}, ${promptTitle}, ${content}, 'resume-review')
     `;
 
-    res.json({ success: true, content});
+    res.json({ success: true, content });
 
   } catch (error) {
-    console.log(error.message);
+    console.error("Resume Review Error:", error.message);
+    const is403 = error.status === 403 || String(error.message).includes("403");
+    const userMessage = is403
+      ? "Gemini API Key was reported as leaked/blocked by Google. Please generate a fresh free key at https://aistudio.google.com/app/apikey and update server/.env"
+      : error.message;
     res.json({
-        success: false,
-        message: error.message
-    })
+      success: false,
+      message: userMessage
+    });
+  } finally {
+    if (tempFilePath && fs.existsSync(tempFilePath)) {
+      try {
+        fs.unlinkSync(tempFilePath);
+      } catch (err) {
+        console.warn("Could not delete temp resume file:", err.message);
+      }
+    }
   }
 };

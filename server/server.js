@@ -6,6 +6,7 @@ import aiRouter from "./routes/aiRoutes.js";
 import connectCloudinary from "./configs/cloudinary.js";
 import userRouter from "./routes/userRoutes.js";
 import paymentRouter from "./routes/paymentRoutes.js";
+import ragRouter from "./routes/ragRoutes.js";
 import { stripeWebhook } from "./controllers/paymentController.js";
 
 const app = express();
@@ -31,6 +32,7 @@ app.use(requireAuth());
 app.use('/api/ai', aiRouter);
 app.use('/api/user', userRouter);
 app.use('/api/payment', paymentRouter);
+app.use('/api/rag', ragRouter);
 
 const PORT = process.env.PORT || 3000;
 
