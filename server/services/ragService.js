@@ -85,7 +85,7 @@ export const getEmbedding = async (text) => {
   const apiKey = process.env.Gemini_API_Key;
   const inputSample = (text || "").slice(0, 4000);
 
-  if (apiKey && apiKey.trim().length > 10 && !apiKey.startsWith("AIzaSyCSBf6u")) {
+  if (apiKey && apiKey.trim().length > 10) {
     // Strategy 1: Google Gemini REST API (gemini-embedding-001 with 768 dimensions)
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${apiKey}`;
