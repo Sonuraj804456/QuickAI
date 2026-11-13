@@ -210,16 +210,51 @@ List the verified reference sources with active clickable Markdown links: [Sourc
 
   agentSteps.push("Synthesizing multi-source findings into final research report...");
 
-  // Final Synthesis Step: Request complete report
+  // Final Synthesis Step: use plain model (no tools bound) so it cannot call tools again
   messages.push({
     role: "user",
-    content: "Now synthesize all findings and tool observations into the final, complete Markdown research report following the requested 6-section structure."
+    content:
+      "IMPORTANT: Do NOT call any tools. Based solely on all the research observations above, write the final, complete Markdown research report now following the requested 6-section structure. Output only the Markdown report text."
   });
 
-  const finalResponse = await model.invoke(messages);
-  const report = typeof finalResponse.content === "string" 
-    ? finalResponse.content 
-    : JSON.stringify(finalResponse.content);
+  /**
+   * Extract a plain string from whatever LangChain returns.
+   * ChatGoogleGenerativeAI can return content as:
+   *   • string  → model gave a direct text answer
+   *   • Array   → model still tried to call tools (each element has {type, functionCall} or {type, text})
+   * We pick only the "text" parts; if none exist we do one forced re-call.
+   */
+  const extractText = (content) => {
+    if (typeof content === "string") return content.trim();
+    if (Array.isArray(content)) {
+      return content
+        .filter((c) => c.type === "text" || typeof c === "string")
+        .map((c) => (typeof c === "string" ? c : c.text || ""))
+        .join("\n")
+        .trim();
+    }
+    return "";
+  };
+
+  let finalResponse = await model.invoke(messages);
+  let report = extractText(finalResponse.content);
+
+  // If the model still returned only tool-call objects (no text), force a plain-text synthesis
+  if (!report) {
+    agentSteps.push("Forcing plain-text synthesis (model attempted extra tool call)...");
+    const forcedResponse = await model.invoke([
+      {
+        role: "system",
+        content:
+          "You are a research report writer. Write ONLY plain Markdown text. Do NOT call any tools or functions."
+      },
+      {
+        role: "user",
+        content: `Write a detailed Markdown research report about "${topic}" using the knowledge you already have. Follow this 6-section structure:\n1. Executive Summary\n2. Market Dynamics & Recent Developments\n3. Technical Architecture & Business Model\n4. Competitive Landscape\n5. Strategic Implications & Future Outlook\n6. Verified Sources & Citations`
+      }
+    ]);
+    report = extractText(forcedResponse.content) || "Report generation failed — please retry.";
+  }
 
   // De-duplicate collected sources
   const seenUrls = new Set();
