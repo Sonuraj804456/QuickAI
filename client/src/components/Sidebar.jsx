@@ -8,7 +8,8 @@ import {
   Scissors,
   SquarePen,
   Users,
-  BookOpen
+  BookOpen,
+  Globe
 } from 'lucide-react'
 import React from 'react'
 import { NavLink } from 'react-router-dom'
@@ -23,6 +24,7 @@ const navItems = [
   { to: '/ai/remove-object', label: 'Remove Object', Icon: Scissors },
   { to: '/ai/review-resume', label: 'Review Resume', Icon: FileText },
   { to: '/ai/chat-pdf', label: 'Chat with PDF', Icon: BookOpen },
+  { to: '/ai/deep-research', label: 'Deep Research', Icon: Globe },
   { to: '/ai/community', label: 'Community', Icon: Users },
 ]
 

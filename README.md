@@ -6,8 +6,9 @@
 [![Google Gemini](https://img.shields.io/badge/Google_Gemini-3.6_Flash-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white)](https://aistudio.google.com)
 [![Stripe](https://img.shields.io/badge/Stripe-Subscription_Billing-635BFF?style=for-the-badge&logo=stripe&logoColor=white)](https://stripe.com)
 [![Clerk](https://img.shields.io/badge/Clerk-Authentication-6C47FF?style=for-the-badge&logo=clerk&logoColor=white)](https://clerk.com)
+[![LangChain](https://img.shields.io/badge/LangChain-ReAct_Agents-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white)](https://langchain.com)
 
-> **Quick.Ai** is a production-grade, full-stack AI SaaS platform combining **Retrieval-Augmented Generation (RAG)**, **ATS resume-to-job matching**, **multi-model media creation**, and **subscription monetization**. Built with React 19, Express 5, Neon Serverless PostgreSQL with `pgvector`, and Google Gemini.
+> **Quick.Ai** is a production-grade, full-stack AI SaaS platform combining **Retrieval-Augmented Generation (RAG)**, **LangChain Autonomous Deep Research Agents**, **ATS resume-to-job matching**, **multi-model media creation**, and **subscription monetization**. Built with React 19, Express 5, Neon Serverless PostgreSQL with `pgvector`, LangChain, and Google Gemini.
 
 ---
 
@@ -20,7 +21,13 @@
 * **Grounded Synthesis & Citations:** Injects the top-4 most relevant excerpts into `gemini-3.6-flash`, providing structured answers with expandable source cards (Chunk ID, Similarity %, and excerpts).
 * **Zero-Crash Resilience:** Includes an automated local normalized semantic vector generator as a fail-safe against external API rate limits or credential revocations.
 
-### 2. 🎯 ATS Resume & Job Description Matcher
+### 2. 🌐 Autonomous Deep Web Research Agent (LangChain Tools)
+* **Autonomous ReAct Agent Loop:** Formulates multi-step search strategies, executes tool calls, observes real-time web responses, and iteratively refines queries (*Thought ➔ Action ➔ Observation ➔ Synthesis*).
+* **Multi-Tool Orchestration:** Binds dynamic tools built with `@langchain/core/tools` including live web news intelligence (`search_web`), encyclopedic verification (`search_wikipedia`), and deep HTML article extraction (`read_webpage`).
+* **Multi-Source Dossiers:** Synthesizes structured executive intelligence reports featuring an Executive Summary, Market Dynamics, Technical Architecture, Competitive Landscape, and clickable verified web citations.
+* **Dual Depth Modes:** Standard Brief (2-turn fast search) and Comprehensive Dossier (3-turn multi-source deep scan).
+
+### 3. 🎯 ATS Resume & Job Description Matcher
 * **Semantic Compatibility Scoring:** Evaluates candidate resumes against target job descriptions, outputting a quantifiable ATS compatibility score (0–100%).
 * **Gap Analysis:** Identifies directly matched strengths vs. critical missing technical keywords and domain competencies.
 * **Metric-Driven Bullet Rewrites:** Generates line-by-line resume optimizations structured around the Google XYZ formula (`Accomplished [X], as measured by [Y], by doing [Z]`).
@@ -84,6 +91,7 @@
 | **Frontend** | React 19, Vite, Tailwind CSS, Lucide React, React Markdown, React Hot Toast, Axios |
 | **Backend** | Node.js, Express 5, Multer, `pdf-parse`, FormData |
 | **Database** | Neon Serverless PostgreSQL 17.11 with **`pgvector`** (HNSW Indexing) |
+| **Agentic AI** | **LangChain** (`@langchain/core`, `@langchain/google-genai`), ReAct Tool Calling |
 | **AI Models** | Google Gemini 3.6 Flash, Gemini 3 Flash Preview, Gemini-Embedding-001 (768-D) |
 | **Vision & Media** | Clipdrop API (Text-to-Image), Cloudinary AI (Object / Background Removal) |
 | **Authentication** | Clerk Auth (`@clerk/express`, JWT JWKS verification) |
@@ -243,6 +251,7 @@ Visit **`http://localhost:5173`** in your browser!
 * `POST /api/ai/remove-background` — Automated background transparency via Cloudinary.
 * `POST /api/ai/remove-object` — Neural object erasure & inpainting.
 * `POST /api/ai/review-resume` — ATS semantic evaluation against target Job Descriptions.
+* `POST /api/ai/deep-research` — Autonomous multi-tool web research agent powered by LangChain.
 
 ### RAG Routes (`/api/rag`)
 * `POST /api/rag/upload-document` — Ingests, chunks, embeds, and indexes PDF files into `pgvector`.
@@ -257,14 +266,13 @@ Visit **`http://localhost:5173`** in your browser!
 
 ---
 
-## 💡 Engineering Highlights: Why Native RAG Over LangChain?
+## 💡 Engineering Highlights: Architectural Decisions That Matter
 
-In Quick.Ai, we deliberately implemented our RAG pipeline natively in Node.js rather than pulling in LangChain:
+Quick.Ai implements a **hybrid, dual-paradigm AI architecture** that uses the right tool for the right job:
 
-1. **Serverless Latency & Cold Starts:** LangChain's large bundle footprint (~25MB+) degrades Vercel serverless cold starts by 3–5 seconds. Our native pipeline starts in milliseconds.
-2. **Transparent Multi-Tenant SQL:** Direct relational filtering (`WHERE user_id = $userId AND document_id = $docId ORDER BY embedding <=> $vector`) ensures row-level multi-tenancy in a single database round-trip without complex wrapper configurations.
-3. **Failsafe Architecture:** Allows deterministic local high-dimensional vector fallbacks when third-party API providers throttle requests.
-4. **No Library Breaking Changes:** Eliminates reliance on rapidly evolving framework abstractions (`LCEL`, `RetrievalQAChain`), ensuring long-term maintainability.
+1. **Native pgvector RAG for Documents (Speed & Security):** For document retrieval, pulling in LangChain would have added 25MB+ of bundle overhead, increasing serverless cold-start latency. By writing our document chunking and vector cosine similarity search (`<=>`) directly in PostgreSQL, we achieved sub-second retrieval, 100% transparent SQL debugging, and strict row-level multi-tenant isolation (`WHERE user_id = $userId`).
+2. **LangChain for Autonomous Multi-Tool Agents (Where It Truly Shines):** For our Deep Web Research Agent, we leveraged LangChain's `@langchain/core/tools` and ReAct reasoning loops. When an agent needs to autonomously decide between searching live web news, querying Wikipedia summaries, or deep-reading full article pages in an iterative feedback loop (*Thought ➔ Action ➔ Observation ➔ Synthesis*), LangChain provides a production-grade abstraction.
+3. **Failsafe Zero-Crash Design:** If third-party APIs face rate limits or credential revocations, our pipeline incorporates deterministic local high-dimensional vector fallbacks, ensuring zero user-facing downtime.
 
 ---
 

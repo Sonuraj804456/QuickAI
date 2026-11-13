@@ -9,6 +9,7 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
 import fs from "fs";
+import { runDeepResearch } from "../services/researchAgentService.js";
 const AI = {
   get chat() {
     return new OpenAI({
@@ -378,5 +379,59 @@ ${pdfData.text}`;
         console.warn("Could not delete temp resume file:", err.message);
       }
     }
+  }
+};
+
+/**
+ * Autonomous Deep Web Research Agent powered by LangChain
+ */
+export const deepResearch = async (req, res) => {
+  try {
+    const { userId } = req.auth();
+    const { topic, depth = "standard" } = req.body;
+    const plan = req.plan;
+    const free_usage = req.free_usage;
+
+    if (!topic || !topic.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Research topic is required."
+      });
+    }
+
+    if (plan !== "premium" && free_usage >= 10) {
+      return res.json({
+        success: false,
+        message: "Limit reached. Upgrade to continue."
+      });
+    }
+
+    const { report, sources, steps } = await runDeepResearch(topic.trim(), depth);
+
+    await sql`
+      INSERT INTO creations (user_id, prompt, content, type)
+      VALUES (${userId}, ${topic.trim()}, ${report}, 'deep-research');
+    `;
+
+    if (plan !== "premium") {
+      await clerkClient.users.updateUserMetadata(userId, {
+        privateMetadata: {
+          free_usage: free_usage + 1
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      report,
+      sources,
+      steps
+    });
+  } catch (error) {
+    console.error("Deep Research Error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 };

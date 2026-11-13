@@ -5,7 +5,7 @@ import star_icon from "./star_icon.svg";
 import star_dull_icon from "./star_dull_icon.svg";
 import profile_img_1 from "./profile_img_1.png";
 import arrow_icon from "./arrow_icon.svg";
-import { SquarePen, Hash, Image, Eraser, Scissors, FileText, BookOpen } from 'lucide-react'
+import { SquarePen, Hash, Image, Eraser, Scissors, FileText, BookOpen, Globe } from 'lucide-react'
 import ai_gen_img_1 from "./ai_gen_img_1.png";
 import ai_gen_img_2 from "./ai_gen_img_2.png";
 import ai_gen_img_3 from "./ai_gen_img_3.png";
@@ -69,6 +69,13 @@ export const AiToolsData = [
         Icon: BookOpen,
         bg: { from: '#6366F1', to: '#A855F7' },
         path: '/ai/chat-pdf'
+    },
+    {
+        title: 'Deep Research Agent',
+        description: 'Autonomous multi-step web research agent powered by LangChain tools with live citations.',
+        Icon: Globe,
+        bg: { from: '#0284C7', to: '#2563EB' },
+        path: '/ai/deep-research'
     }
 ]
 
