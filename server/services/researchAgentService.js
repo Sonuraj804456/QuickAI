@@ -123,23 +123,54 @@ export const runDeepResearch = async (topic, depth = "standard") => {
 
   const tools = [searchWebTool, searchWikipediaTool, readWebpageTool];
 
-  // Initialize LangChain Chat Model
-  let model;
-  try {
-    model = new ChatGoogleGenerativeAI({
-      apiKey,
-      model: "gemini-3.6-flash",
-      temperature: 0.25
-    });
-  } catch (initErr) {
-    model = new ChatGoogleGenerativeAI({
-      apiKey,
-      model: "gemini-3-flash-preview",
-      temperature: 0.25
-    });
-  }
+  /**
+   * Helper to create LangChain model with fallback candidates:
+   * 1. gemini-3-flash-preview (Standard generous free tier quota: ~1500 RPD)
+   * 2. gemini-3.1-flash-lite (Fast and high quota fallback)
+   * 3. gemini-3.6-flash (Restricted 20 RPD free tier quota)
+   */
+  const candidateModels = ["gemini-3-flash-preview", "gemini-3.1-flash-lite", "gemini-3.6-flash"];
 
-  const boundModel = model.bindTools(tools);
+  const createModel = (modelName) =>
+    new ChatGoogleGenerativeAI({
+      apiKey,
+      model: modelName,
+      temperature: 0.25
+    });
+
+  let currentModelIndex = 0;
+  let model = createModel(candidateModels[currentModelIndex]);
+  let boundModel = model.bindTools(tools);
+
+  /**
+   * Safe invocation wrapper that automatically falls back across models on 429 / Quota errors
+   */
+  const safeInvoke = async (isBound, msgList) => {
+    while (currentModelIndex < candidateModels.length) {
+      try {
+        const invoker = isBound ? boundModel : model;
+        return await invoker.invoke(msgList);
+      } catch (invokeErr) {
+        const isQuotaOr429 =
+          invokeErr.message?.includes("429") ||
+          invokeErr.message?.includes("quota") ||
+          invokeErr.message?.includes("RESOURCE_EXHAUSTED") ||
+          invokeErr.status === 429;
+
+        if (isQuotaOr429 && currentModelIndex + 1 < candidateModels.length) {
+          const failedModel = candidateModels[currentModelIndex];
+          currentModelIndex++;
+          const nextModel = candidateModels[currentModelIndex];
+          console.warn(`[DeepResearch] ${failedModel} hit quota/429. Falling back to ${nextModel}...`);
+          agentSteps.push(`Switching to backup model (${nextModel}) due to quota...`);
+          model = createModel(nextModel);
+          boundModel = model.bindTools(tools);
+        } else {
+          throw invokeErr;
+        }
+      }
+    }
+  };
 
   const systemInstructions = `You are QuickAI's Autonomous Deep Research Agent.
 Your objective is to conduct thorough, factual, and deeply analytical market/technical research on the user's requested topic.
@@ -180,7 +211,7 @@ List the verified reference sources with active clickable Markdown links: [Sourc
 
   while (cycle < maxCycles) {
     cycle++;
-    const aiResponse = await boundModel.invoke(messages);
+    const aiResponse = await safeInvoke(true, messages);
     messages.push(aiResponse);
 
     if (aiResponse.tool_calls && aiResponse.tool_calls.length > 0) {
@@ -236,13 +267,13 @@ List the verified reference sources with active clickable Markdown links: [Sourc
     return "";
   };
 
-  let finalResponse = await model.invoke(messages);
+  let finalResponse = await safeInvoke(false, messages);
   let report = extractText(finalResponse.content);
 
   // If the model still returned only tool-call objects (no text), force a plain-text synthesis
   if (!report) {
     agentSteps.push("Forcing plain-text synthesis (model attempted extra tool call)...");
-    const forcedResponse = await model.invoke([
+    const forcedResponse = await safeInvoke(false, [
       {
         role: "system",
         content:

@@ -196,23 +196,29 @@ ${question}
 
 Detailed Answer:`;
 
-    // 4. Generate Answer via Gemini
+    // 4. Generate Answer via Gemini (with multi-tier model fallback)
     let answer = "";
     try {
       let completion;
-      try {
-        completion = await AI.chat.completions.create({
-          model: "gemini-3.6-flash",
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.3
-        });
-      } catch (err36) {
-        console.warn("gemini-3.6-flash failed, trying gemini-3-flash-preview:", err36.message);
-        completion = await AI.chat.completions.create({
-          model: "gemini-3-flash-preview",
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.3
-        });
+      const modelsToTry = ["gemini-3-flash-preview", "gemini-3.1-flash-lite", "gemini-3.6-flash"];
+      let lastErr = null;
+
+      for (const modelCandidate of modelsToTry) {
+        try {
+          completion = await AI.chat.completions.create({
+            model: modelCandidate,
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.3
+          });
+          if (completion) break;
+        } catch (candidateErr) {
+          lastErr = candidateErr;
+          console.warn(`[RAG] ${modelCandidate} failed (${candidateErr.message}), trying next model...`);
+        }
+      }
+
+      if (!completion && lastErr) {
+        throw lastErr;
       }
       answer = completion.choices[0]?.message?.content || "No response generated.";
     } catch (aiErr) {

@@ -325,31 +325,31 @@ ${pdfData.text}`;
     }
 
     let response;
-    try {
-      response = await AI.chat.completions.create({
-        model: "gemini-3.6-flash",
-        messages: [
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        temperature: 0.4,
-        max_tokens: 10000,
-      });
-    } catch (err36) {
-      console.warn("gemini-3.6-flash failed in resumeReview, trying gemini-3-flash-preview:", err36.message);
-      response = await AI.chat.completions.create({
-        model: "gemini-3-flash-preview",
-        messages: [
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        temperature: 0.4,
-        max_tokens: 10000,
-      });
+    const modelsToTry = ["gemini-3-flash-preview", "gemini-3.1-flash-lite", "gemini-3.6-flash"];
+    let lastErr = null;
+
+    for (const modelCandidate of modelsToTry) {
+      try {
+        response = await AI.chat.completions.create({
+          model: modelCandidate,
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          temperature: 0.4,
+          max_tokens: 10000,
+        });
+        if (response) break;
+      } catch (candidateErr) {
+        lastErr = candidateErr;
+        console.warn(`[ResumeReview] ${modelCandidate} failed (${candidateErr.message}), trying next model...`);
+      }
+    }
+
+    if (!response && lastErr) {
+      throw lastErr;
     }
 
     const content = response.choices[0].message.content;
