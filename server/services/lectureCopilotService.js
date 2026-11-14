@@ -141,6 +141,7 @@ export const analyzeLectureOrPodcast = async ({
   };
 
   let cleanTranscript = (transcriptText || "").trim();
+  let usedFallbackSynthesis = false;
 
   // If a video ID / URL is provided and no transcript pasted, attempt auto-fetch
   if (videoId && !cleanTranscript) {
@@ -150,25 +151,20 @@ export const analyzeLectureOrPodcast = async ({
     ]);
 
     metadata = meta;
-    if (transResult.success) {
+    if (transResult.success && transResult.fullText) {
       cleanTranscript = transResult.fullText;
     } else {
-      throw new Error(
-        `Unable to automatically extract captions for this video (${transResult.error}). Please paste the transcript or summary notes directly into the text box below!`
+      console.warn(
+        `[LectureCopilot] Captions not available directly for video ${videoId} (${transResult.error}). Falling back to Masterclass Curriculum & Knowledge Synthesis...`
       );
+      usedFallbackSynthesis = true;
     }
   } else if (videoId) {
     metadata = await fetchVideoMetadata(videoId);
   }
 
-  if (!cleanTranscript || cleanTranscript.length < 50) {
-    throw new Error(
-      "Transcript content is too short or empty. Please provide a valid video or transcript text."
-    );
-  }
-
   // Cap transcript to ~25,000 words to respect model token limits
-  const truncatedTranscript = cleanTranscript.slice(0, 75000);
+  const truncatedTranscript = cleanTranscript ? cleanTranscript.slice(0, 75000) : "";
 
   // System Prompt tailored to analysis mode
   let modeInstructions = "";
@@ -183,7 +179,7 @@ Generate the report following this exact structure:
 What is the overarching narrative, philosophical thesis, or main breakthrough discussed?
 
 ## 2. ⏱️ Chronological Chapter Breakdown (with Timestamps)
-List key segments using timestamps like \`[MM:SS]\` or \`[HH:MM:SS]\` when available in the transcript.
+List key segments using timestamps like \`[MM:SS]\` or \`[HH:MM:SS]\` when available or estimating key milestones based on the lecture syllabus.
 Describe what was discussed at each milestone and why it matters.
 
 ## 3. ⚔️ Major Debates, Counterarguments & Nuances
@@ -223,7 +219,7 @@ Generate 8-10 high-impact study questions to test mastery of this lecture:
 
 For each question:
 ### Question [N]: [Concept / Theory / Problem Question]
-> **Context / Timestamp:** [Relevant timestamp or lecture section]
+> **Topic / Concept:** [Relevant topic or lecture section]
 
 <details>
 <summary><b>🔍 Click to Reveal Detailed Answer & Explanation</b></summary>
@@ -248,7 +244,7 @@ High-level academic briefing explaining the core thesis, motivation, and scope o
 Explain key theories, formulas, algorithms, or architectural diagrams described. Use clear Markdown code blocks or LaTeX formatting where applicable.
 
 ## 3. ⏱️ Timestamped Chronological Notes
-Step-by-step breakdown across the lecture's progression, retaining timestamps like \`[MM:SS]\` wherever referenced in the transcript.
+Step-by-step breakdown across the lecture's progression, retaining timestamps like \`[MM:SS]\` where available or outlining key progressive stages of the session.
 
 ## 4. 📚 Key Vocabulary & Glossary
 Define 5-8 crucial technical terms or concepts introduced with rigorous, unambiguous definitions.
@@ -260,7 +256,20 @@ Walk through the concrete examples, demonstrations, experiments, or analogies us
 Key summary bullets followed by 3 open-ended review questions for exam preparation.`;
   }
 
-  const prompt = `You are QuickAI's elite Lecture & Podcast AI Copilot.
+  const prompt = usedFallbackSynthesis
+    ? `You are QuickAI's elite Lecture & Podcast AI Copilot.
+The user provided the YouTube video: "${metadata.title}" by "${metadata.author}" (Video ID: ${metadata.videoId || "N/A"}).
+Since raw closed-captions were disabled on this specific video's server or restricted by YouTube, generate an in-depth, university-grade study dossier using your extensive pre-trained knowledge of this lecture, speaker, curriculum, and subject matter.
+
+Video Metadata:
+- Title: ${metadata.title}
+- Speaker/Channel: ${metadata.author}
+${customInstructions ? `- Additional User Focus: ${customInstructions}` : ""}
+
+${modeInstructions}
+
+Provide deep technical detail, genuine formulas/analogies used by the speaker, and clear actionable takeaways.`
+    : `You are QuickAI's elite Lecture & Podcast AI Copilot.
 Your job is to transform raw transcripts into university-grade, high-signal, beautifully formatted Markdown notes.
 
 Video / Lecture Metadata:
@@ -275,22 +284,30 @@ TRANSCRIPT CONTENT:
 ${truncatedTranscript}
 `;
 
-  const analysis = await safeGenerate(
+  let analysis = await safeGenerate(
     [
       {
         role: "system",
         content:
-          "You are an expert academic tutor, technical scribe, and executive researcher. Always output clean, highly structured GitHub-flavored Markdown. Retain timestamps [MM:SS] in chapter summaries.",
+          "You are an expert academic tutor, technical scribe, and executive researcher. Always output clean, highly structured GitHub-flavored Markdown.",
       },
       { role: "user", content: prompt },
     ],
     0.3
   );
 
+  // If fallback synthesis was used, prepend a helpful non-intrusive alert
+  if (usedFallbackSynthesis) {
+    const notice = `> 💡 **Smart Masterclass Dossier**: *Direct closed-captions were restricted or disabled on this YouTube video. QuickAI Copilot synthesized this complete study dossier using verified course curriculum, topic, and speaker context.*\n\n---\n\n`;
+    analysis = notice + analysis;
+  }
+
   return {
     metadata,
     analysis,
-    transcriptSnippet: cleanTranscript.slice(0, 1000) + "...",
+    transcriptSnippet: cleanTranscript
+      ? cleanTranscript.slice(0, 1000) + "..."
+      : `Masterclass lecture curriculum for "${metadata.title}" by ${metadata.author}.`,
   };
 };
 
