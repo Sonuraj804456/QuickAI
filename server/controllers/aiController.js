@@ -10,6 +10,11 @@ const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");
 import fs from "fs";
 import { runDeepResearch } from "../services/researchAgentService.js";
+import {
+  analyzeLectureOrPodcast,
+  askLectureQuestion,
+  extractYouTubeId,
+} from "../services/lectureCopilotService.js";
 const AI = {
   get chat() {
     return new OpenAI({
@@ -432,6 +437,107 @@ export const deepResearch = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message
+    });
+  }
+};
+
+/**
+ * AI YouTube Lecture & Podcast Copilot - Analyze Video/Transcript
+ */
+export const analyzeLecture = async (req, res) => {
+  try {
+    const { userId } = req.auth();
+    const { url, rawText, mode, customInstructions } = req.body;
+    const plan = req.plan;
+    const free_usage = req.free_usage;
+
+    if (plan !== "premium" && free_usage >= 10) {
+      return res.json({
+        success: false,
+        message: "Limit reached. Upgrade to continue.",
+      });
+    }
+
+    const videoId = url ? extractYouTubeId(url) : null;
+
+    if (!videoId && (!rawText || rawText.trim().length < 50)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Please provide a valid YouTube video URL or paste at least 50 characters of lecture/podcast transcript text.",
+      });
+    }
+
+    const result = await analyzeLectureOrPodcast({
+      videoId,
+      videoUrl: url,
+      transcriptText: rawText,
+      mode: mode || "study-guide",
+      customInstructions: customInstructions || "",
+    });
+
+    // Save to creations history
+    await sql`
+      INSERT INTO creations (user_id, prompt, content, type)
+      VALUES (
+        ${userId},
+        ${result.metadata.title || url || "Lecture Copilot Analysis"},
+        ${result.analysis},
+        'lecture-copilot'
+      );
+    `;
+
+    if (plan !== "premium") {
+      await clerkClient.users.updateUserMetadata(userId, {
+        privateMetadata: {
+          free_usage: free_usage + 1,
+        },
+      });
+    }
+
+    res.json({
+      success: true,
+      ...result,
+    });
+  } catch (error) {
+    console.error("Lecture Copilot Analysis Error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to analyze lecture/podcast.",
+    });
+  }
+};
+
+/**
+ * AI YouTube Lecture & Podcast Copilot - Interactive Q&A Chat
+ */
+export const chatLecture = async (req, res) => {
+  try {
+    const { transcriptText, videoTitle, question, history } = req.body;
+
+    if (!question || !question.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Question is required.",
+      });
+    }
+
+    const result = await askLectureQuestion({
+      transcriptText,
+      videoTitle,
+      question: question.trim(),
+      history: history || [],
+    });
+
+    res.json({
+      success: true,
+      answer: result.answer,
+    });
+  } catch (error) {
+    console.error("Lecture Copilot Chat Error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to answer lecture question.",
     });
   }
 };

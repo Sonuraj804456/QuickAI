@@ -5,7 +5,7 @@ import star_icon from "./star_icon.svg";
 import star_dull_icon from "./star_dull_icon.svg";
 import profile_img_1 from "./profile_img_1.png";
 import arrow_icon from "./arrow_icon.svg";
-import { SquarePen, Hash, Image, Eraser, Scissors, FileText, BookOpen, Globe } from 'lucide-react'
+import { SquarePen, Hash, Image, Eraser, Scissors, FileText, BookOpen, Globe, Video } from 'lucide-react'
 import ai_gen_img_1 from "./ai_gen_img_1.png";
 import ai_gen_img_2 from "./ai_gen_img_2.png";
 import ai_gen_img_3 from "./ai_gen_img_3.png";
@@ -29,11 +29,11 @@ export const AiToolsData = [
         path: '/ai/write-article'
     },
     {
-        title: 'Blog Title Generator',
-        description: 'Find the perfect, catchy title for your blog posts with our AI-powered generator.',
-        Icon: Hash,
-        bg: { from: '#B153EA', to: '#E549A3' },
-        path: '/ai/blog-titles'
+        title: 'YouTube & Podcast Copilot',
+        description: 'Transform lectures and podcasts into timestamped study dossiers, executive briefs, and interactive quizzes.',
+        Icon: Video,
+        bg: { from: '#E11D48', to: '#BE123C' },
+        path: '/ai/lecture-copilot'
     },
     {
         title: 'AI Image Generation',

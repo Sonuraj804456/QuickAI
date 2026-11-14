@@ -1,13 +1,24 @@
 import express from "express";
 import { auth } from "../middlewares/auth.js";
-import { generateArticle, generateBlogTitle, generateImage, removeImageBackground, resumeReview, removeImageObject, deepResearch } from "../controllers/aiController.js";
+import {
+  generateArticle,
+  generateBlogTitle,
+  generateImage,
+  removeImageBackground,
+  resumeReview,
+  removeImageObject,
+  deepResearch,
+  analyzeLecture,
+  chatLecture,
+} from "../controllers/aiController.js";
 import { upload } from "../configs/multer.js";
 
 const aiRouter = express.Router();
 
 aiRouter.post('/generate-article', auth, generateArticle);
 aiRouter.post('/generate-blog-title', auth, generateBlogTitle);
-aiRouter.post('/generate-image', auth, generateImage);
+aiRouter.post('/lecture-copilot/analyze', auth, analyzeLecture);
+aiRouter.post('/lecture-copilot/chat', auth, chatLecture);
 aiRouter.post('/deep-research', auth, deepResearch);
 
 aiRouter.post(

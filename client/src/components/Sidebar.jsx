@@ -9,7 +9,8 @@ import {
   SquarePen,
   Users,
   BookOpen,
-  Globe
+  Globe,
+  Video
 } from 'lucide-react'
 import React from 'react'
 import { NavLink } from 'react-router-dom'
@@ -18,7 +19,7 @@ import { LogOut } from 'lucide-react'
 const navItems = [
   { to: '/ai', label: 'Dashboard', Icon: House },
   { to: '/ai/write-article', label: 'Write Article', Icon: SquarePen },
-  { to: '/ai/blog-titles', label: 'Blog Titles', Icon: Hash },
+  { to: '/ai/lecture-copilot', label: 'YouTube Copilot', Icon: Video },
   { to: '/ai/generate-images', label: 'Generate Images', Icon: Image },
   { to: '/ai/remove-background', label: 'Remove Background', Icon: Eraser },
   { to: '/ai/remove-object', label: 'Remove Object', Icon: Scissors },

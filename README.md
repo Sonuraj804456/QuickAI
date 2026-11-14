@@ -35,7 +35,8 @@
 
 ### 3. ✍️ Generative Content Studio
 * **Long-Form Article Generator:** Generates comprehensive, SEO-optimized articles with customizable length, tone, and structural constraints.
-* **Viral Blog Title Generator:** Creates high-converting, click-worthy headline options tailored for engagement.
+* **AI YouTube Lecture & Podcast Copilot:** Ingests YouTube URLs or raw audio transcripts, extracts timed captions with `youtube-transcript` and YouTube oEmbed, and synthesizes timestamped masterclass study guides, podcast executive dossiers, and interactive active-recall quizzes with an embedded player and conversational Copilot chat.
+* **LangChain Autonomous Deep Research Agent:** Multi-step autonomous research loops with live web intelligence and verified citations.
 * **Creation History:** Automatically logs all generated artifacts in PostgreSQL for easy retrieval and management.
 
 ### 4. 🎨 AI Media & Vision Studio
